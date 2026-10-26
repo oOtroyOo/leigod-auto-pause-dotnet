@@ -6,6 +6,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     xmlns:app="clr-namespace:LeigodPause"
+    xmlns:c="clr-namespace:LeigodPause.Converters"
     xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
     Title="DashboardPage"
     d:DesignHeight="450"
@@ -19,6 +20,7 @@
     mc:Ignorable="d">
     <Page.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <c:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
     </Page.Resources>
     <!-- 错误 / 危险	SystemFillColorCriticalBrush	红 -->
     <!-- 警告	SystemFillColorCautionBrush	黄 -->
@@ -110,10 +112,18 @@
                                            Click="TokenBtn_Click" />
                             </StackPanel>
                             <ui:TextBlock Text="网页登录后点击“检查 Token”以同步账号状态"
+                                          Visibility="{Binding LeigodCoreModel.UserName, Converter={StaticResource NullToVisibilityConverter}}"
                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                                           Margin="0,4,0,0"
                                           TextAlignment="Right"
                                           TextWrapping="Wrap" />
+                            <ui:TextBlock Visibility="{Binding LeigodCoreModel.UserName, Converter={StaticResource NullToVisibilityConverter},ConverterParameter=False}"
+                                          Foreground="{DynamicResource SystemFillColorAttentionBrush}"
+                                          Margin="0,4,0,0"
+                                          TextAlignment="Right"
+                                          TextWrapping="Wrap">
+                                Token有效，注意：Token 有效期<LineBreak />更换网页登录设备也会登录失效
+                            </ui:TextBlock>
                         </StackPanel>
                     </Grid>
                 </ui:Card>

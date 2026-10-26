@@ -15,6 +15,7 @@ public class ConfigFile(ILogger<ConfigFile> logger)
     private readonly FileIniDataParser _parser = new FileIniDataParser();
     private IniData? _data;
     public event Action? OnSave;
+    public event Action? OnReload;
 
     private DateTime _lastModifyDate = default;
 
@@ -109,5 +110,6 @@ public class ConfigFile(ILogger<ConfigFile> logger)
         {
             _data = Load();
         }
+        OnReload?.Invoke();
     }
 }

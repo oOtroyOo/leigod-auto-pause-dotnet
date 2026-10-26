@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
 
 namespace LeigodPause.Service.Models;
 
@@ -24,8 +25,9 @@ public partial class LeigodCoreModel : ObservableObject
         set => configFile?.SetValue("account_token", value);
     }
 
-    [ObservableProperty] private string? _userName;
-    [ObservableProperty] private string? _pauseStatus;
+    public string? UserName => UserInfoJson?["nickname"]?.GetValue<string>();
+    public string? PauseStatus => UserInfoJson?["pause_status"]?.GetValue<string>();
+    public int? PauseStatusId => UserInfoJson?["pause_status_id"]?.GetValue<int>();
 
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsMatchedGameProcess))]
     private string? _matchedGameProcess;
@@ -34,13 +36,15 @@ public partial class LeigodCoreModel : ObservableObject
 
     private Process? gameProcess;
 
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsNotPaused))]
-    private int? _pauseStatusId;
-
     public bool IsNotPaused => PauseStatusId == 0;
 
 
-    [ObservableProperty] private JsonObject? _userInfoJson;
+    [NotifyPropertyChangedFor(nameof(UserName))]
+    [NotifyPropertyChangedFor(nameof(PauseStatus))]
+    [NotifyPropertyChangedFor(nameof(PauseStatusId))]
+    [NotifyPropertyChangedFor(nameof(IsNotPaused))]
+    [ObservableProperty]
+    private JsonObject? _userInfoJson;
 
     public ObservableCollection<string> GameListSource { get; }
 
@@ -62,8 +66,15 @@ public partial class LeigodCoreModel : ObservableObject
         this.httpClientFactory = httpClientFactory;
         this.logger = logger;
         this.configFile = configFile;
+        this.configFile.OnReload += ConfigFileOnOnReload;
         GameListSource = new ObservableCollection<string>(configFile.GetValue<string>("games")?.Split(',') ?? []);
         GameListSource.CollectionChanged += (_, _) => { configFile.SetValue("games", string.Join(",", GameListSource)); };
+    }
+
+    private void ConfigFileOnOnReload()
+    {
+        OnPropertyChanged(nameof(Token));
+        OnPropertyChanged(nameof(GameListSource));
     }
 
     public bool RequestInfoTimeout => DateTimeOffset.Now - LastRequestInfoTime > _requestInfoDelay;
@@ -76,7 +87,7 @@ public partial class LeigodCoreModel : ObservableObject
 
         try
         {
-            var token = configFile.GetValue<string>("account_token");
+            var token = Token;
             if (token is { Length: > 0 })
             {
                 var httpClient = httpClientFactory.CreateClient(HttpClientExtensions.LeigodClientName);
@@ -125,9 +136,6 @@ public partial class LeigodCoreModel : ObservableObject
         lock (_stateLock)
         {
             UserInfoJson = data;
-            UserName = data?["nickname"]?.GetValue<string>();
-            PauseStatus = data?["pause_status"]?.GetValue<string>();
-            PauseStatusId = data?["pause_status_id"]?.GetValue<int>();
         }
     }
 
@@ -166,7 +174,7 @@ public partial class LeigodCoreModel : ObservableObject
 
             try
             {
-                var token = configFile.GetValue<string>("account_token");
+                var token = Token;
                 if (token is { Length: > 0 })
                 {
                     var httpClient = httpClientFactory.CreateClient(HttpClientExtensions.LeigodClientName);
@@ -232,8 +240,7 @@ public partial class LeigodCoreModel : ObservableObject
             gameProcess?.Dispose();
 
 
-            string[] games = configFile.GetValue<string>("games")?.Split(',') ?? Array.Empty<string>();
-            foreach (var gameName in games)
+            foreach (var gameName in GameListSource)
             {
                 var name = gameName.Trim();
                 if (string.IsNullOrEmpty(name))
