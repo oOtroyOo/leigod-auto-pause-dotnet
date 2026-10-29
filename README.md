@@ -2,8 +2,7 @@
 
 雷神加速器 · 时长自动暂停工具（.NET 重写版）
 
-<!-- 仓库地址：github.com/oOtroyOo/leigod-auto-pause-dotnet（已确定） -->
-<!-- 1) GitHub Release 徽章（发布首个 Release 后会自动显示版本号；当前无 Release，先预留） -->
+<!-- 1) GitHub Release 徽章（发布首个 Release 后会自动显示版本号） -->
 [![GitHub Release](https://img.shields.io/github/v/release/oOtroyOo/leigod-auto-pause-dotnet?include_prereleases&style=flat-square)](https://github.com/oOtroyOo/leigod-auto-pause-dotnet/releases)
 
 <!-- 2) 累计下载量徽章（同样待发布后自动统计） -->
@@ -15,7 +14,7 @@
 ## 一、项目简介
 
 本工具用于**自动监控雷神加速器（Leigod）的加速状态与游戏进程**，在游戏退出后自动暂停加速，
-帮你省下每一分钟加速时长；并在**系统关机 / 注销前**自动暂停，避免忘记暂停而白白浪费时间。
+帮你省下加速时长；并在**系统关机 / 注销前**自动暂停，避免忘记暂停而白白浪费时间。
 
 本版本使用 **C# / .NET** 全面重构（Fork 自原 Python 项目 `leigod-auto-pause`），核心升级点：
 
