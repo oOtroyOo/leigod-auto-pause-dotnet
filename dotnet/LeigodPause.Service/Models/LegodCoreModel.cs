@@ -114,7 +114,7 @@ public partial class LeigodCoreModel : ObservableObject
                     var msg = jsonObject?["msg"]?.GetValue<string>();
                     if (code != null && code != 0 && onError != null)
                     {
-                        await InvokeOnUi(() => onError.Invoke((int)code, msg));
+                        await InvokeOnUi(() => onError.Invoke((int)code, msg)).ConfigureAwait(false);
                     }
                 }
             }
@@ -150,53 +150,73 @@ public partial class LeigodCoreModel : ObservableObject
         await _pauseInFlight.WaitAsync().ConfigureAwait(false);
         try
         {
-            try
-            {
-                logger.LogInformation("SendPauseState IsNotPaused 1: {0}", IsNotPaused);
-                if (!IsNotPaused)
-                {
-                    logger.LogInformation("没有暂停状态，请求用户信息");
-                    await RequestUserInfo();
-                }
-
-                logger.LogInformation("SendPauseState IsNotPaused 2: {0}", IsNotPaused);
-                if (!IsNotPaused)
-                {
-                    logger.LogInformation("没有暂停状态，直接return");
-                    MatchedGameProcessExitTime = default;
-                    return false;
-                }
-            }
-            catch
-            {
-                //
-            }
+            // try
+            // {
+            //     logger.LogInformation("SendPauseState IsNotPaused 1: {0}", IsNotPaused);
+            //     if (!IsNotPaused)
+            //     {
+            //         logger.LogInformation("没有暂停状态，请求用户信息");
+            //         await RequestUserInfo();
+            //     }
+            //
+            //     logger.LogInformation("SendPauseState IsNotPaused 2: {0}", IsNotPaused);
+            //     if (!IsNotPaused)
+            //     {
+            //         logger.LogInformation("没有暂停状态，直接return");
+            //         MatchedGameProcessExitTime = default;
+            //         return false;
+            //     }
+            // }
+            // catch
+            // {
+            //     //
+            // }
 
             try
             {
                 var token = Token;
                 if (token is { Length: > 0 })
                 {
-                    var httpClient = httpClientFactory.CreateClient(HttpClientExtensions.LeigodClientName);
-                    // https://webapi.leigod.com/api/user/pause?os_type=5&account_token=xxxx&region_code=1&src_channel=guanwang&lang=zh_CN
-                    string urlQuery = $"{Pause_url}?os_type={4}&account_token={token}&region_code={1}&src_channel=guanwang&lang=zh_CN";
-                    logger.LogInformation("Post : {0}", urlQuery);
-                    var postMessage = await httpClient.PostAsync(urlQuery, new StringContent("{}")).ConfigureAwait(false);
-                    postMessage.EnsureSuccessStatusCode();
-                    var jsonStr = await postMessage.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    logger.LogInformation("PostResult : {0}", jsonStr);
-                    var jsonObject = JsonNode.Parse(jsonStr) as JsonObject;
-                    var code = jsonObject?["code"]?.GetValue<int>();
-                    var msg = jsonObject?["msg"]?.GetValue<string>();
-                    if (code != null && code != 0 && onError != null)
+                    int tryCount = 0;
+                    while (tryCount < 3)
                     {
-                        await InvokeOnUi(() => onError.Invoke((int)code, msg));
-                    }
-                    else
-                    {
-                        // 暂停成功执行后清除退出计时，避免重复触发；下次游戏退出会重新计时
-                        logger.LogInformation("暂停成功执行后清除退出计时");
-                        MatchedGameProcessExitTime = default;
+                        var httpClient = httpClientFactory.CreateClient(HttpClientExtensions.LeigodClientName);
+                        // https://webapi.leigod.com/api/user/pause?os_type=5&account_token=xxxx&region_code=1&src_channel=guanwang&lang=zh_CN
+                        string urlQuery = $"{Pause_url}?os_type={4}&account_token={token}&region_code={1}&src_channel=guanwang&lang=zh_CN";
+                        logger.LogInformation("Post : {0}", urlQuery);
+                        var postMessage = await httpClient.PostAsync(urlQuery, new StringContent("{}")).ConfigureAwait(false);
+                        postMessage.EnsureSuccessStatusCode();
+                        var jsonStr = await postMessage.Content.ReadAsStringAsync().ConfigureAwait(false);
+                        logger.LogInformation("PostResult : {0}", jsonStr);
+                        var jsonObject = JsonNode.Parse(jsonStr) as JsonObject;
+                        var code = jsonObject?["code"]?.GetValue<int>();
+                        var msg = jsonObject?["msg"]?.GetValue<string>();
+
+                        // "code": 400803,
+                        // "msg": "账号已经暂停，请不要重复操作",
+
+                        // "code": 500000,
+                        // "msg": "当前访问人数超限，请稍后再试",
+
+                        if (code == 500000)
+                        {
+                            tryCount++;
+                            await Task.Delay(500).ConfigureAwait(false);
+                            continue;
+                        }
+
+                        if (code == null || code == 0 || code == 400803 || onError == null)
+                        {
+                            // 暂停成功执行后清除退出计时，避免重复触发；下次游戏退出会重新计时
+                            logger.LogInformation("暂停成功执行后清除退出计时");
+                            MatchedGameProcessExitTime = default;
+                        }
+                        else
+                        {
+                            await InvokeOnUi(() => onError.Invoke((int)code, msg)).ConfigureAwait(false);
+                        }
+
+                        break;
                     }
                 }
 

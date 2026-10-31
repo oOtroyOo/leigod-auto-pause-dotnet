@@ -10,7 +10,7 @@ public class Worker(ILogger<Worker> logger, ServiceIpcServer ipcServer, LeigodCo
         logger.LogInformation("StopAsync");
         // 注销事件，避免内存泄漏
         SystemEvents.SessionEnding -= OnSessionEnding;
-        await ipcServer.Stop();
+        await ipcServer.Stop().ConfigureAwait(false);
         try
         {
             if (Program.AppHost != null)
@@ -27,8 +27,8 @@ public class Worker(ILogger<Worker> logger, ServiceIpcServer ipcServer, LeigodCo
             logger.LogError(e, "获取不到Lifetime实例");
         }
 
-        await OnEndingActionAsync();
-        await base.StopAsync(cancellationToken);
+        await OnEndingActionAsync().ConfigureAwait(false);
+        await base.StopAsync(cancellationToken).ConfigureAwait(false);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -64,7 +64,7 @@ public class Worker(ILogger<Worker> logger, ServiceIpcServer ipcServer, LeigodCo
 
             try
             {
-                await UpdateTimer();
+                await UpdateTimer().ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -74,11 +74,11 @@ public class Worker(ILogger<Worker> logger, ServiceIpcServer ipcServer, LeigodCo
             float updateTime = configFile.GetValue<float>("update");
             if (updateTime < 1) updateTime = 1;
 
-            await Task.Delay((int)(updateTime * 1000), stoppingToken);
+            await Task.Delay((int)(updateTime * 1000), stoppingToken).ConfigureAwait(false);
         }
 
         logger.LogInformation("ExecuteAsync 的token已取消");
-        await OnEndingActionAsync();
+        await OnEndingActionAsync().ConfigureAwait(false);
     }
 
     private void OnSessionEnding(object sender, SessionEndingEventArgs e)
@@ -114,8 +114,8 @@ public class Worker(ILogger<Worker> logger, ServiceIpcServer ipcServer, LeigodCo
         logger.LogInformation("OnEndingAction");
         try
         {
-            var pauseTask = SendPauseState();
-            await Task.WhenAny(pauseTask, Task.Delay(3000));
+            var pauseTask = SendPauseState(true);
+            await Task.WhenAny(pauseTask, Task.Delay(3000)).ConfigureAwait(false);
         }
         catch (Exception e)
         {
@@ -127,14 +127,14 @@ public class Worker(ILogger<Worker> logger, ServiceIpcServer ipcServer, LeigodCo
     {
         if (leigodCoreModel.RequestInfoTimeout)
         {
-            await RequestUserInfo();
+            await RequestUserInfo().ConfigureAwait(false);
         }
 
 
-        var matched = await leigodCoreModel.FindGameProcess();
+        var matched = await leigodCoreModel.FindGameProcess().ConfigureAwait(false);
 
         // 服务端主动下发检测结果给客户端（无回执，允许数据丢弃）
-        await ipcServer.PushFindGameProcessAsync(matched);
+        await ipcServer.PushFindGameProcessAsync(matched).ConfigureAwait(false);
 
         if (string.IsNullOrEmpty(matched) && leigodCoreModel.MatchedGameProcessExitTime != default)
         {
@@ -146,8 +146,8 @@ public class Worker(ILogger<Worker> logger, ServiceIpcServer ipcServer, LeigodCo
             logger.LogInformation("进程关闭延时{0} ", exitTimeSpan);
             if (exitTimeSpan > TimeSpan.FromSeconds(loopTime))
             {
-                await SendPauseState();
-                await RequestUserInfo();
+                await SendPauseState().ConfigureAwait(false);
+                await RequestUserInfo().ConfigureAwait(false);
             }
         }
     }
@@ -177,7 +177,7 @@ public class Worker(ILogger<Worker> logger, ServiceIpcServer ipcServer, LeigodCo
         }
     }
 
-    private async Task SendPauseState()
+    private async Task SendPauseState(bool hideTip = false)
     {
         logger.LogInformation("SendPauseState");
         var token = configFile.GetValue<string>("account_token");
@@ -200,7 +200,7 @@ public class Worker(ILogger<Worker> logger, ServiceIpcServer ipcServer, LeigodCo
                     return Task.CompletedTask;
                 })
                 .ConfigureAwait(false);
-            if (sendResult)
+            if (!hideTip && sendResult)
             {
                 StartMainAppToast(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), "已暂停加速器");
             }

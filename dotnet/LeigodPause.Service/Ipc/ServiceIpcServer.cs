@@ -60,7 +60,7 @@ public sealed class ServiceIpcServer(LeigodCoreModel leigodCoreModel, ILogger<Se
             }
 
             logger.LogInformation("IPC client connected on {PipeName}", IpcPipeNames.CommandPipe);
-            await HandleClientAsync(pipe, token);
+            await HandleClientAsync(pipe, token).ConfigureAwait(false);
         }
     }
 
@@ -127,10 +127,10 @@ public sealed class ServiceIpcServer(LeigodCoreModel leigodCoreModel, ILogger<Se
             var (code, msg, data) = cmd.Command switch
             {
                 ServiceCommand.Ping => (0, null, (byte[]?)null),
-                ServiceCommand.RefreshUserInfo => await DoRefreshAsync(),
-                ServiceCommand.PauseState => await DoPauseAsync(),
-                ServiceCommand.ReloadConfig => await DoReloadConfig(),
-                ServiceCommand.FindGameProcess => await DoFindGameProcess(),
+                ServiceCommand.RefreshUserInfo => await DoRefreshAsync().ConfigureAwait(false),
+                ServiceCommand.PauseState => await DoPauseAsync().ConfigureAwait(false),
+                ServiceCommand.ReloadConfig => await DoReloadConfig().ConfigureAwait(false),
+                ServiceCommand.FindGameProcess => await DoFindGameProcess().ConfigureAwait(false),
                 ServiceCommand.Exit => (0, (string?)null, (byte[]?)null),
                 _ => (-2, "Unknown command", null),
             };
@@ -168,7 +168,7 @@ public sealed class ServiceIpcServer(LeigodCoreModel leigodCoreModel, ILogger<Se
                 errMsg = m;
                 LastUserInfoError = new IpcEnvelope() { Command = ServiceCommand.RefreshUserInfo, Code = c, Msg = m };
                 return Task.CompletedTask;
-            });
+            }).ConfigureAwait(false);
         }
 
         // 本次刷新返回明确错误：直接上报错误（保留 LastUserInfoError 不变）
@@ -207,7 +207,7 @@ public sealed class ServiceIpcServer(LeigodCoreModel leigodCoreModel, ILogger<Se
             errCode = c;
             errMsg = m;
             return Task.CompletedTask;
-        });
+        }).ConfigureAwait(false);
 
         // 在途跳过：明确告知客户端“请求进行中”，而非伪装成功
         if (!executed)
@@ -260,7 +260,7 @@ public sealed class ServiceIpcServer(LeigodCoreModel leigodCoreModel, ILogger<Se
             Payload = string.IsNullOrEmpty(gameMsg) ? null : Encoding.UTF8.GetBytes(gameMsg),
         };
 
-        if (await PushToClient(envelope))
+        if (await PushToClient(envelope).ConfigureAwait(false))
         {
             _lastPushedGameMsg = gameMsg;
         }
