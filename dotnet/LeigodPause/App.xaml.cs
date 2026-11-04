@@ -1,4 +1,5 @@
 ﻿using System.IO.Pipes;
+using System.Net.Http;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -62,6 +63,7 @@ public partial class App
                     loggingBuilder.AddProvider(new FileLoggerProvider());
 // #endif
                 })
+                .AddHttpClientWithProxy()
                 .AddLeigodHttpClient()
                 .AddSingleton<MainView>()
                 .AddSingleton<MainViewCommand>()
